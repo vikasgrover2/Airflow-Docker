@@ -6,6 +6,23 @@ services:
             - POSTGRES_USER=airflow
             - POSTGRES_PASSWORD=airflow
             - POSTGRES_DB=airflow
+
+    db:
+        image: postgres:16.0-alpine
+        restart: always
+        environment:
+           - POSTGRES_HOST=${POSTGRES_HOST}
+           - POSTGRES_USER=${POSTGRES_USER}
+           - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+           - POSTGRES_DB=${POSTGRES_DB}
+           - POSTGRES_CONTAINER_PORT=${POSTGRES_CONTAINER_PORT}
+           - POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT}
+        ports: 
+          - "${POSTGRES_HOST_PORT}:${POSTGRES_CONTAINER_PORT}"
+        volumes:
+          - ./.database:/var/lib/postgresql/data
+        container_name: postgres_dlhouse
+
     redis:
         image: redis:5.0.5
 
@@ -35,8 +52,6 @@ services:
             - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
             - EXECUTOR=Celery
             - PYTHONPATH=/usr/local/airflow
-        env_file:
-          - env.list
         volumes:
             - ./airflow/dags:/usr/local/airflow/dags
             - ./scripts:/usr/local/airflow/scripts
@@ -65,8 +80,6 @@ services:
             - EXECUTOR=Celery
             - PYTHONPATH=/usr/local/airflow
         command: scheduler
-        env_file:
-          - env.list
 
     worker1:
         image: worker1:latest
@@ -83,8 +96,6 @@ services:
             - EXECUTOR=Celery
             - PYTHONPATH=/usr/local/airflow
         command: worker
-        env_file:
-          - env.list
 
     worker2:
         image: worker2:latest
@@ -101,8 +112,4 @@ services:
             - EXECUTOR=Celery
             - PYTHONPATH=/usr/local/airflow
         command: worker
-        env_file:
-          - env.list
-
-
 
