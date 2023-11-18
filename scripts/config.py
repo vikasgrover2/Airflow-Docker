@@ -1,8 +1,9 @@
 import os
 
 PYTHONPATH = os.environ['PYTHONPATH']
-TRAIN_SCRIPT_PATH = f"{PYTHONPATH}{os.environ['TRAIN_SCRIPT_PATH']}"
-PREDICT_SCRIPT_PATH = f"{PYTHONPATH}{os.environ['PREDICT_SCRIPT_PATH']}"
-MODEL_PATH = f"{PYTHONPATH}{os.environ['MODEL_PATH']}"
-TRAIN_DATA_PATH = f"{PYTHONPATH}{os.environ['TRAIN_DATA']}"
-PREDICT_DATA_PATH = f"{PYTHONPATH}{os.environ['PREDICT_DATA']}"
+#Scripts datasets
+TRAIN_SCRIPT_PATH = f"{PYTHONPATH}/scripts/data/train_iris.csv"
+PREDICT_SCRIPT_PATH = f"{PYTHONPATH}/scripts/data/predict_iris.csv"
+MODEL_PATH = f"{PYTHONPATH}/scripts/data/model_v1.sav"
+TRAIN_DATA_PATH = f"{PYTHONPATH}/scripts/data/train_data.csv"
+PREDICT_DATA_PATH = f"{PYTHONPATH}/scripts/data/predict_data.csv"
