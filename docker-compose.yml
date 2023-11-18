@@ -1,12 +1,23 @@
 version: '3.7'
 services:
     postgres:
-        image: postgres:9.6
+        image: postgres:16.0-alpine
         environment:
-            - POSTGRES_USER=airflow
-            - POSTGRES_PASSWORD=airflow
-            - POSTGRES_DB=airflow
-
+            - POSTGRES_HOST=${AF_POSTGRES_HOST}
+            - POSTGRES_USER=${AF_POSTGRES_USER}
+            - POSTGRES_PASSWORD=${AF_POSTGRES_PASSWORD}
+            - POSTGRES_DB=${AF_POSTGRES_DB}
+            - POSTGRES_CONTAINER_PORT=${AF_POSTGRES_CONTAINER_PORT}
+        volumes:
+          - ./.AirflowDB:/var/lib/postgresql/data
+        ports:
+            - "5434:5432"
+        healthcheck:
+            test: [ "CMD-SHELL", "pg_isready -U ${AF_POSTGRES_USER}" ]
+            interval: 30s
+            timeout: 30s
+            retries: 3
+        
     db:
         image: postgres:16.0-alpine
         restart: always
@@ -24,10 +35,18 @@ services:
         container_name: postgres_dlhouse
 
     redis:
-        image: redis:5.0.5
+        image: 'redis:5.0.5'
+        command: [
+            "bash", "-c",
+            '
+            docker-entrypoint.sh
+            --requirepass ${REDIS_PASSWORD}
+            '
+        ]
+        restart: always
 
     flower:
-        image: flower:latest
+        image: vgrover2/docker-airflow:2.7.3
         build:
           context: .
         restart: always
@@ -35,12 +54,18 @@ services:
             - redis
         environment:
             - EXECUTOR=Celery
+            - POSTGRES_USER=${AF_POSTGRES_USER}
+            - POSTGRES_DB=${AF_POSTGRES_DB}
+            - POSTGRES_HOST=${AF_POSTGRES_HOST}
+            - POSTGRES_PASSWORD=${AF_POSTGRES_PASSWORD}
         ports:
             - "5555:5555"
-        command: flower
+        command: celery flower
+        env_file:
+            - env.list
 
     webserver:
-        image: webserver:latest
+        image: vgrover2/docker-airflow:2.7.3
         build:
           context: .
         restart: always
@@ -49,12 +74,16 @@ services:
             - redis
         environment:
             - LOAD_EX=n
-            - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
             - EXECUTOR=Celery
-            - PYTHONPATH=/usr/local/airflow
+            - POSTGRES_USER=${AF_POSTGRES_USER}
+            - POSTGRES_DB=${AF_POSTGRES_DB}
+            - POSTGRES_HOST=${AF_POSTGRES_HOST}
+            - POSTGRES_PASSWORD=${AF_POSTGRES_PASSWORD}
         volumes:
-            - ./airflow/dags:/usr/local/airflow/dags
-            - ./scripts:/usr/local/airflow/scripts
+            - ./airflow/dags:${AIRFLOW_DAG_DIR}
+            - ./airflow/logs:${AIRFLOW_LOGS_DIR}
+            - ./scripts:${AIRFLOW_SCRIPTS_DIR}
+            - ./files:${AIRFLOW_FILES_DIR}
         ports:
             - "8080:8080"
         command: webserver
@@ -63,53 +92,72 @@ services:
             interval: 30s
             timeout: 30s
             retries: 3
+        env_file:
+            - env.list
 
     scheduler:
-        image: scheduler:latest
+        image: vgrover2/docker-airflow:2.7.3
         build:
           context: .
         restart: always
         depends_on:
             - webserver
         volumes:
-            - ./airflow/dags:/usr/local/airflow/dags
-            - ./scripts:/usr/local/airflow/scripts
+            - ./airflow/dags:${AIRFLOW_DAG_DIR}
+            - ./scripts:${AIRFLOW_SCRIPTS_DIR}
         environment:
             - LOAD_EX=n
-            - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+            - FERNET_KEY=${FERNET_KEY}
             - EXECUTOR=Celery
-            - PYTHONPATH=/usr/local/airflow
+            - PYTHONPATH=${PYTHONPATH}
+            - POSTGRES_USER=${AF_POSTGRES_USER}
+            - POSTGRES_DB=${AF_POSTGRES_DB}
+            - POSTGRES_HOST=${AF_POSTGRES_HOST}
+            - POSTGRES_PASSWORD=${AF_POSTGRES_PASSWORD}
         command: scheduler
+        env_file:
+            - env.list
 
     worker1:
-        image: worker1:latest
+        image: vgrover2/docker-airflow:2.7.3
         build:
           context: .
         restart: always
         depends_on:
             - scheduler
         volumes:
-            - ./airflow/dags:/usr/local/airflow/dags
-            - ./scripts:/usr/local/airflow/scripts
+            - ./airflow/dags:${AIRFLOW_DAG_DIR}
+            - ./scripts:${AIRFLOW_SCRIPTS_DIR}
         environment:
-            - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+            - FERNET_KEY=${FERNET_KEY}
             - EXECUTOR=Celery
-            - PYTHONPATH=/usr/local/airflow
-        command: worker
+            - PYTHONPATH=${PYTHONPATH}
+            - POSTGRES_USER=${AF_POSTGRES_USER}
+            - POSTGRES_DB=${AF_POSTGRES_DB}
+            - POSTGRES_HOST=${AF_POSTGRES_HOST}
+            - POSTGRES_PASSWORD=${AF_POSTGRES_PASSWORD}
+        command: celery worker
+        env_file:
+            - env.list
 
     worker2:
-        image: worker2:latest
+        image: vgrover2/docker-airflow:2.7.3
         build:
           context: .
         restart: always
         depends_on:
             - scheduler
         volumes:
-            - ./airflow/dags:/usr/local/airflow/dags
-            - ./scripts:/usr/local/airflow/scripts
+            - ./airflow/dags:${AIRFLOW_DAG_DIR}
+            - ./scripts:${AIRFLOW_SCRIPTS_DIR}
         environment:
-            - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+            - FERNET_KEY=${FERNET_KEY}
             - EXECUTOR=Celery
-            - PYTHONPATH=/usr/local/airflow
-        command: worker
-
+            - PYTHONPATH=${PYTHONPATH}
+            - POSTGRES_USER=${AF_POSTGRES_USER}
+            - POSTGRES_DB=${AF_POSTGRES_DB}
+            - POSTGRES_HOST=${AF_POSTGRES_HOST}
+            - POSTGRES_PASSWORD=${AF_POSTGRES_PASSWORD}
+        command: celery worker
+        env_file:
+            - env.list
