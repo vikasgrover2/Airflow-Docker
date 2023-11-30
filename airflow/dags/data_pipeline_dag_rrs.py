@@ -11,7 +11,7 @@ with dag:
 
  start_replication_rrs = data_replication(mstr_schema = 'app_rrs1', 
                                           app_name = 'rrs', 
-                                          env = 'prod',
+                                          env = 'dev',
                                           task_id='start_replication_rrs'
                                           )
 
