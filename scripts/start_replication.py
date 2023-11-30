@@ -1,0 +1,1 @@
+from scripts.data_replication_parametrized import run_replication

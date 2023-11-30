@@ -2,7 +2,7 @@ import pickle
 
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from xgboost import XGBClassifier
+
 
 from scripts.config import PREDICT_SCRIPT_PATH, TRAIN_SCRIPT_PATH, MODEL_PATH, TRAIN_DATA_PATH, PREDICT_DATA_PATH
 from scripts.data_reader import CSVReader
