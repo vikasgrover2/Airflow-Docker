@@ -14,5 +14,4 @@ with dag:
                                           env = 'dev',
                                           task_id='start_replication_fta'
                                           )
-
 dummy_task >> start_replication_fta
