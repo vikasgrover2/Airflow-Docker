@@ -13,16 +13,24 @@ import argparse
 import oracledb as oracledb 
 from airflow.models.baseoperator import BaseOperator
 from airflow.models.connection import Connection
+import pandas as pd
+import numpy as np
+from sqlalchemy import create_engine
 
 class data_replication(BaseOperator):
-    def __init__(self, mstr_schema:str, app_name:str, env:str,concurrent_tasks =5, **kwargs)-> None:
+    def __init__(self, mstr_schema:str, app_name:str, env:str, repmethod='db', concurrent_tasks =5,filedir=None,filename=None,schemaname=None,tablename=None, **kwargs)-> None:
         super().__init__(**kwargs)
         self.mstr_schema = mstr_schema 
         self.app_name = app_name
         self.env = env
+        self.repmethod = repmethod
         self.concurrent_tasks = concurrent_tasks
         self.OrcPool = None
         self.PgresPool = None
+        self.filedir = filedir
+        self.filename = filename
+        self.schemaname = schemaname
+        self.tablename = tablename
 
     @staticmethod
     def output_type_handler(cursor, metadata):
@@ -138,7 +146,26 @@ class data_replication(BaseOperator):
             if postgres_connection:
                 postgres_cursor.close()
                 PgresPool.putconn(postgres_connection)
-            
+       
+    def load_csv(self,filedir,filename,schemaname,tablename):
+        print("Loading csv")
+        print(f'File Directory: {self.filedir}, File Name: {self.filename}, Schemaname: {self.schemaname}, Tablename: {self.tablename}')
+        self.OrcPool, self.PgresPool = self.get_connection_pools()
+        filepath = filedir+filename
+        df = pd.read_csv(filedir+filename)
+        df = df.replace(np.nan, None)
+        insert_query = f'INSERT INTO {schemaname}.{tablename} VALUES ({", ".join(["%s"] * len(list(df.columns)))})'
+
+        postgres_connection  = self.PgresPool.getconn()
+        with postgres_connection.cursor() as cursor:
+            data_to_insert = list(df.itertuples(index=False, name=None))
+            execute_batch(cursor, insert_query, data_to_insert)
+            postgres_connection.commit()
+        
+        postgres_connection.commit()
+        cursor.close()
+        self.kill_pools()
+        
     def start_replication(self):
         print('Starting Replication with below params..')
         print(f'Master Schema : {self.mstr_schema}, App Name: {self.app_name}, Env: {self.env}')
@@ -152,4 +179,10 @@ class data_replication(BaseOperator):
         self.kill_pools()
 
     def execute(self, context)-> None:
-        self.start_replication()    
+        print(context)
+        print(f'method = {self.repmethod}')
+        print(f'concurrent_tasks = {self.concurrent_tasks}')
+        if self.repmethod =='db':
+            self.start_replication()
+        elif self.repmethod =='csv':
+            self.load_csv(self.filedir, self.filename, self.schemaname, self.tablename)
